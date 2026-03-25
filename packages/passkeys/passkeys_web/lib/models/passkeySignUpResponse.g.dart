@@ -12,6 +12,7 @@ PasskeySignUpResponse _$PasskeySignUpResponseFromJson(
       json['id'] as String,
       json['rawId'] as String,
       AttestationResponse.fromJson(json['response'] as Map<String, dynamic>),
+      json['clientExtensionResults'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$PasskeySignUpResponseToJson(
@@ -20,6 +21,7 @@ Map<String, dynamic> _$PasskeySignUpResponseToJson(
       'id': instance.id,
       'rawId': instance.rawId,
       'response': instance.response,
+      'clientExtensionResults': instance.clientExtensionResults,
     };
 
 AttestationResponse _$AttestationResponseFromJson(Map<String, dynamic> json) =>

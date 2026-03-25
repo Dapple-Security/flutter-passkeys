@@ -19,6 +19,7 @@ class RegisterRequestType {
     this.pubKeyCredParams,
     this.timeout,
     this.attestation,
+    this.extensions,
   });
 
   /// Constructs a new instance from a JSON string.
@@ -67,6 +68,7 @@ class RegisterRequestType {
           : null,
       timeout: json['timeout'] as int?,
       attestation: json['attestation'] as String?,
+      extensions: json['extensions'] as Map<String, dynamic>?,
     );
   }
 
@@ -100,6 +102,12 @@ class RegisterRequestType {
   /// - "direct"/"enterprise": Conveys unaltered attestation information
   final String? attestation;
 
+  /// WebAuthn extensions to include in the registration request.
+  /// Supports both single-value extensions (e.g. credProps) and structured
+  /// extensions (e.g. prf). The keys are extension identifiers and values
+  /// are the extension inputs as defined by the WebAuthn spec.
+  final Map<String, dynamic>? extensions;
+
   /// Converts this instance to a JSON string.
   String toJsonString() => jsonEncode(toJson());
 
@@ -118,6 +126,7 @@ class RegisterRequestType {
       if (authSelectionType != null)
         'authenticatorSelection': authSelectionType!.toJson(),
       if (attestation != null) 'attestation': attestation,
+      if (extensions != null) 'extensions': extensions,
     };
   }
 }

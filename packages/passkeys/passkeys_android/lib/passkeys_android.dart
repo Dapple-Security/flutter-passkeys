@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:passkeys_android/messages.g.dart';
 import 'package:passkeys_platform_interface/passkeys_platform_interface.dart';
@@ -32,6 +34,7 @@ class PasskeysAndroid extends PasskeysPlatform {
         );
       }).toList(),
       request.preferImmediatelyAvailableCredentials,
+      request.extensions != null ? jsonEncode(request.extensions) : null,
     );
 
     return AuthenticateResponseType(
@@ -40,7 +43,10 @@ class PasskeysAndroid extends PasskeysPlatform {
         clientDataJSON: r.clientDataJSON,
         authenticatorData: r.authenticatorData,
         signature: r.signature,
-        userHandle: r.userHandle);
+        userHandle: r.userHandle,
+        clientExtensionResults: r.clientExtensionResults != null
+            ? jsonDecode(r.clientExtensionResults!) as Map<String, dynamic>?
+            : null);
   }
 
   @override
@@ -92,7 +98,8 @@ class PasskeysAndroid extends PasskeysPlatform {
         request.attestation,
         request.excludeCredentials
             .map((e) => ExcludeCredential(id: e.id, type: e.type))
-            .toList());
+            .toList(),
+        request.extensions != null ? jsonEncode(request.extensions) : null);
 
     return RegisterResponseType(
       id: r.id,
@@ -100,6 +107,9 @@ class PasskeysAndroid extends PasskeysPlatform {
       clientDataJSON: r.clientDataJSON,
       attestationObject: r.attestationObject,
       transports: r.transports.whereType<String>().toList(),
+      clientExtensionResults: r.clientExtensionResults != null
+          ? jsonDecode(r.clientExtensionResults!) as Map<String, dynamic>?
+          : null,
     );
   }
 

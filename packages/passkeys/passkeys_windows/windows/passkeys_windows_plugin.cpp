@@ -61,6 +61,7 @@ namespace passkeys_windows
         const int64_t *timeout,
         const std::string *attestation,
         const flutter::EncodableList &exclude_credentials,
+        const std::string *extensions,
         std::function<void(ErrorOr<RegisterResponse> reply)> result) override
     {
 
@@ -342,6 +343,7 @@ namespace passkeys_windows
         const std::string *user_verification,
         const flutter::EncodableList *allow_credentials,
         const bool *prefer_immediately_available_credentials,
+        const std::string *extensions,
         std::function<void(ErrorOr<AuthenticateResponse> reply)> result) override
     {
 

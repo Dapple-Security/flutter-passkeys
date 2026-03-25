@@ -17,13 +17,15 @@ public class GetCredentialOptions {
     private String rpId;
     private List<AllowCredentialType> allowCredentials;
     private String userVerification;
+    private String extensions;
 
-    public GetCredentialOptions(String challenge, Long timeout, String rpId, List<AllowCredentialType> allowCredentials, String userVerification) {
+    public GetCredentialOptions(String challenge, Long timeout, String rpId, List<AllowCredentialType> allowCredentials, String userVerification, String extensions) {
         this.challenge = challenge;
         this.timeout = timeout;
         this.rpId = rpId;
         this.allowCredentials = allowCredentials;
         this.userVerification = userVerification;
+        this.extensions = extensions;
     }
 
     public JSONObject toJSON() throws JSONException {
@@ -41,6 +43,9 @@ public class GetCredentialOptions {
                     throw new RuntimeException(ex);
                 }
             }).toArray()));
+        }
+        if (extensions != null) {
+            json.put("extensions", new JSONObject(extensions));
         }
 
         return json;

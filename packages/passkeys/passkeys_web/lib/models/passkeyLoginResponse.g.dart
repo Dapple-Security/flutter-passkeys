@@ -12,6 +12,7 @@ PasskeyLoginResponse _$PasskeyLoginResponseFromJson(
       json['id'] as String,
       json['rawId'] as String,
       AssertionResponse.fromJson(json['response'] as Map<String, dynamic>),
+      json['clientExtensionResults'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$PasskeyLoginResponseToJson(
@@ -20,6 +21,7 @@ Map<String, dynamic> _$PasskeyLoginResponseToJson(
       'id': instance.id,
       'rawId': instance.rawId,
       'response': instance.response,
+      'clientExtensionResults': instance.clientExtensionResults,
     };
 
 AssertionResponse _$AssertionResponseFromJson(Map<String, dynamic> json) =>

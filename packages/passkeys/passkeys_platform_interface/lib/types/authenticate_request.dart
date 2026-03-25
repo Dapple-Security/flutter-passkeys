@@ -15,6 +15,7 @@ class AuthenticateRequestType {
     this.timeout,
     this.userVerification,
     this.allowCredentials,
+    this.extensions,
   });
 
   /// Constructs a new instance from a JSON string.
@@ -57,6 +58,7 @@ class AuthenticateRequestType {
       mediation: mediation,
       preferImmediatelyAvailableCredentials:
           preferImmediatelyAvailableCredentials,
+      extensions: json['extensions'] as Map<String, dynamic>?,
     );
   }
 
@@ -96,6 +98,12 @@ class AuthenticateRequestType {
   /// immediately available, such as those that are stored on the device.
   final bool preferImmediatelyAvailableCredentials;
 
+  /// WebAuthn extensions to include in the authentication request.
+  /// Supports both single-value extensions (e.g. appid) and structured
+  /// extensions (e.g. prf). The keys are extension identifiers and values
+  /// are the extension inputs as defined by the WebAuthn spec.
+  final Map<String, dynamic>? extensions;
+
   /// Converts this instance to a JSON string.
   String toJsonString() => jsonEncode(toJson());
 
@@ -108,6 +116,7 @@ class AuthenticateRequestType {
       if (allowCredentials != null && allowCredentials!.isNotEmpty)
         'allowCredentials': allowCredentials!.map((e) => e.toJson()).toList(),
       if (userVerification != null) 'userVerification': userVerification,
+      if (extensions != null) 'extensions': extensions,
     };
   }
 }

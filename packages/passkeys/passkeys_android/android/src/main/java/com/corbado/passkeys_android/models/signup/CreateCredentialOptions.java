@@ -21,6 +21,8 @@ public class CreateCredentialOptions {
 
     private List<ExcludeCredentialType> excludeCredentials;
 
+    private String extensions;
+
     public CreateCredentialOptions(
             String challenge,
             RelyingPartyType rp,
@@ -29,7 +31,8 @@ public class CreateCredentialOptions {
             Long timeout,
             AuthenticatorSelectionType authenticatorSelection,
             String attestation,
-            List<ExcludeCredentialType> excludeCredentials
+            List<ExcludeCredentialType> excludeCredentials,
+            String extensions
     ) {
         this.challenge = challenge;
         this.rp = rp;
@@ -39,6 +42,7 @@ public class CreateCredentialOptions {
         this.authenticatorSelection = authenticatorSelection;
         this.attestation = attestation;
         this.excludeCredentials = excludeCredentials;
+        this.extensions = extensions;
     }
 
     public JSONObject toJSON() throws JSONException {
@@ -54,6 +58,8 @@ public class CreateCredentialOptions {
             json.put("authenticatorSelection", authenticatorSelection.toJSON());
         if (excludeCredentials != null)
             json.put("excludeCredentials", new JSONArray(excludeCredentials.stream().map(ExcludeCredentialType::toJSON).toArray()));
+        if (extensions != null)
+            json.put("extensions", new JSONObject(extensions));
 
         return json;
     }

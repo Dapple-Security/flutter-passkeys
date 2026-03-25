@@ -96,8 +96,10 @@ class _DebugOverlayWidget extends HookConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(info.description,
-                            style: const TextStyle(fontSize: 12),),
+                        Text(
+                          info.description,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                         if (info.platforms.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(

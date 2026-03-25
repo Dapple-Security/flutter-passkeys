@@ -14,9 +14,11 @@ import FlutterMacOS
 class AuthenticateController: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, Cancellable {
     public var completion: ((Result<AuthenticateResponse, Error>) -> Void)?
     private var innerCancel: (() -> Void)?;
+    private var extensions: [String: Any]?
     
-    init(completion: @escaping ((Result<AuthenticateResponse, Error>) -> Void)) {
+    init(completion: @escaping ((Result<AuthenticateResponse, Error>) -> Void), extensions: [String: Any]? = nil) {
         self.completion = completion;
+        self.extensions = extensions;
     }
     
     func run(requests: [ASAuthorizationRequest], conditionalUI: Bool, preferImmediatelyAvailableCredentials: Bool) {
@@ -63,13 +65,58 @@ class AuthenticateController: NSObject, ASAuthorizationControllerDelegate, ASAut
             completion?(.success(response))
             break
         case let r as ASAuthorizationPlatformPublicKeyCredentialAssertion:
+            var extensionResults: [String: Any] = [:]
+            
+            // Extract largeBlob assertion result if available
+            if #available(iOS 17.0, macOS 14.0, *) {
+                if extensions?["largeBlob"] != nil {
+                    if let largeBlobOutput = r.largeBlob {
+                        switch largeBlobOutput.result {
+                        case .read(let data):
+                            if let data = data {
+                                extensionResults["largeBlob"] = ["blob": data.toBase64URL()]
+                            }
+                        case .write(let success):
+                            if success {
+                                extensionResults["largeBlob"] = ["written": true]
+                            }
+                        @unknown default:
+                            break
+                        }
+                    }
+                }
+            }
+            
+            // Extract PRF assertion result if available
+            if #available(iOS 18.0, macOS 15.0, *) {
+                if extensions?["prf"] != nil {
+                    if let prfResult = r.prf {
+                        var results: [String: Any] = ["first": prfResult.first.toBase64URL()]
+                        if let second = prfResult.second {
+                            results["second"] = second.toBase64URL()
+                        }
+                        extensionResults["prf"] = ["results": results]
+                    }
+                }
+            }
+            
+            let clientExtensionResultsJson: String?
+            if !extensionResults.isEmpty,
+               let jsonData = try? JSONSerialization.data(withJSONObject: extensionResults),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                clientExtensionResultsJson = jsonString
+            } else {
+                clientExtensionResultsJson = nil
+            }
+            
             let response = AuthenticateResponse(
                 id: r.credentialID.toBase64URL(),
                 rawId: r.credentialID.toBase64URL(),
                 clientDataJSON: r.rawClientDataJSON.toBase64URL(),
                 authenticatorData: r.rawAuthenticatorData.toBase64URL(),
                 signature: r.signature.toBase64URL(),
-                userHandle: r.userID?.toBase64URL()
+                userHandle: r.userID?.toBase64URL(),
+                clientExtensionResults: clientExtensionResultsJson
             )
 
             completion?(.success(response))

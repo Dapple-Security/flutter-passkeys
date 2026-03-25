@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:passkeys_platform_interface/passkeys_platform_interface.dart';
 import 'package:passkeys_platform_interface/types/types.dart';
@@ -34,6 +36,7 @@ class PasskeysWindows extends PasskeysPlatform {
           )
           .toList(),
       request.preferImmediatelyAvailableCredentials,
+      request.extensions != null ? jsonEncode(request.extensions) : null,
     );
 
     return AuthenticateResponseType(
@@ -43,6 +46,11 @@ class PasskeysWindows extends PasskeysPlatform {
       authenticatorData: authenticateResponse.authenticatorData,
       signature: authenticateResponse.signature,
       userHandle: authenticateResponse.userHandle,
+      clientExtensionResults:
+          authenticateResponse.clientExtensionResults != null
+              ? jsonDecode(authenticateResponse.clientExtensionResults!)
+                  as Map<String, dynamic>?
+              : null,
     );
   }
 
@@ -95,6 +103,7 @@ class PasskeysWindows extends PasskeysPlatform {
       request.excludeCredentials
           .map((e) => ExcludeCredential(type: e.type, id: e.id))
           .toList(),
+      request.extensions != null ? jsonEncode(request.extensions) : null,
     );
 
     return RegisterResponseType(
@@ -103,6 +112,10 @@ class PasskeysWindows extends PasskeysPlatform {
       clientDataJSON: registerResponse.clientDataJSON,
       attestationObject: registerResponse.attestationObject,
       transports: registerResponse.transports.whereType<String>().toList(),
+      clientExtensionResults: registerResponse.clientExtensionResults != null
+          ? jsonDecode(registerResponse.clientExtensionResults!)
+              as Map<String, dynamic>?
+          : null,
     );
   }
 

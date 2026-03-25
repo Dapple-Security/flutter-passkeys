@@ -45,6 +45,7 @@ class PasskeysWeb extends PasskeysPlatform {
         request.excludeCredentials,
         request.timeout,
         request.attestation,
+        request.extensions,
       ),
     );
 
@@ -62,6 +63,7 @@ class PasskeysWeb extends PasskeysPlatform {
         clientDataJSON: typedResponse.response.clientDataJSON,
         attestationObject: typedResponse.response.attestationObject,
         transports: typedResponse.response.transports,
+        clientExtensionResults: typedResponse.clientExtensionResults,
       );
     } catch (e) {
       final exception = _parseException(e.toString());
@@ -79,6 +81,7 @@ class PasskeysWeb extends PasskeysPlatform {
       request.userVerification,
       request.allowCredentials,
       request.mediation,
+      request.extensions,
     );
 
     try {

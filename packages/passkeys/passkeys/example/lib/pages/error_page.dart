@@ -36,7 +36,11 @@ class ErrorPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(hint!, textAlign: TextAlign.center, style: TextStyle(fontSize: 12),),
+                  Text(
+                    hint!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ],
               ),
           ],

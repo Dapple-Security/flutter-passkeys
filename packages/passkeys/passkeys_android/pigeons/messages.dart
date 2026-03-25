@@ -105,6 +105,7 @@ class RegisterResponse {
     required this.clientDataJSON,
     required this.attestationObject,
     required this.transports,
+    this.clientExtensionResults,
   });
 
   /// The ID
@@ -121,6 +122,9 @@ class RegisterResponse {
 
   /// The supported transports for the authenticator
   final List<String?> transports;
+
+  /// JSON-encoded client extension results
+  final String? clientExtensionResults;
 }
 
 /// Represents an authenticate response
@@ -133,6 +137,7 @@ class AuthenticateResponse {
     required this.authenticatorData,
     required this.signature,
     required this.userHandle,
+    this.clientExtensionResults,
   });
 
   /// The ID
@@ -151,6 +156,9 @@ class AuthenticateResponse {
   final String signature;
 
   final String userHandle;
+
+  /// JSON-encoded client extension results
+  final String? clientExtensionResults;
 }
 
 @HostApi()
@@ -171,6 +179,7 @@ abstract class PasskeysApi {
     int? timeout,
     String? attestation,
     List<ExcludeCredential> excludeCredentials,
+    String? extensions,
   );
 
   @async
@@ -180,7 +189,8 @@ abstract class PasskeysApi {
       int? timeout,
       String? userVerification,
       List<AllowCredential>? allowCredentials,
-      bool? preferImmediatelyAvailableCredentials);
+      bool? preferImmediatelyAvailableCredentials,
+      String? extensions);
 
   @async
   void cancelCurrentAuthenticatorOperation();
