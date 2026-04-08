@@ -14,6 +14,7 @@
 #include <stdexcept>
 
 // Minimal JSON helpers for parsing the extensions parameter.
+// Loosely based on https://dev.to/uponthesky/c-making-a-simple-json-parser-from-scratch-250g
 // Dart's jsonEncode produces compact, well-formed JSON with no extra whitespace.
 namespace {
   const size_t kNpos = std::string::npos;
@@ -503,7 +504,7 @@ namespace passkeys_windows
           size_t ext_len = ext.size();
           auto [prf_s, prf_e] = JObj(ext, 0, ext_len, "prf");
           if (prf_s != kNpos) {
-            // Global eval salts
+            // Global salts
             auto [ev_s, ev_e] = JObj(ext, prf_s, prf_e, "eval");
             if (ev_s != kNpos) {
               std::string fb = JStr(ext, ev_s, ev_e, "first");
@@ -519,7 +520,7 @@ namespace passkeys_windows
                 has_prf = true;
               }
             }
-            // Per-credential eval salts
+            // Per-credential salts
             auto [ebc_s, ebc_e] = JObj(ext, prf_s, prf_e, "evalByCredential");
             if (ebc_s != kNpos) {
               JIterObjs(ext, ebc_s, ebc_e, [&](const std::string &credId, size_t vs, size_t ve) {
@@ -565,7 +566,6 @@ namespace passkeys_windows
         options.dwUserVerificationRequirement = WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED;
         options.pCancellationId = &cancellation_id_;
         options.pAllowCredentialList = allow_creds.empty() ? nullptr : &allow_list;
-        // PRF salts (VERSION_6 field): Windows will hash these per the WebAuthn PRF spec
         options.pHmacSecretSaltValues = has_prf ? &prf_salt_values : nullptr;
 
         if (user_verification)
@@ -629,7 +629,7 @@ namespace passkeys_windows
         AuthenticateResponse response(
             id, id, client_data_json_b64, authenticator_data, signature, user_handle);
 
-        // Extract PRF/hmac-secret output if available (requires WEBAUTHN_ASSERTION_VERSION_3+)
+        // Extract PRF/hmac-secret output if available (requires WebAuthN 3+)
         if (assertion->dwVersion >= WEBAUTHN_ASSERTION_VERSION_3 &&
             assertion->pHmacSecret && assertion->pHmacSecret->cbFirst > 0) {
           auto *h = assertion->pHmacSecret;
