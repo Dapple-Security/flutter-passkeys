@@ -8,9 +8,83 @@
 
 #include <flutter/plugin_registrar_windows.h>
 
+#include <functional>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
+
+// Minimal JSON helpers for parsing the extensions parameter.
+// Dart's jsonEncode produces compact, well-formed JSON with no extra whitespace.
+namespace {
+  const size_t kNpos = std::string::npos;
+
+  // Return value of string key within j[s..e), or "" if not found.
+  std::string JStr(const std::string &j, size_t s, size_t e, const std::string &key) {
+    std::string pat = "\"" + key + "\":\"";
+    size_t i = j.find(pat, s);
+    if (i == kNpos || i + pat.size() > e) return {};
+    i += pat.size();
+    size_t q = j.find('"', i);
+    if (q == kNpos || q > e) return {};
+    return j.substr(i, q - i);
+  }
+
+  // Return {inner_start, inner_end} of object value for key within j[s..e).
+  // inner_end points to the closing '}'. Returns {npos,npos} if not found.
+  std::pair<size_t,size_t> JObj(const std::string &j, size_t s, size_t e, const std::string &key) {
+    std::string pat = "\"" + key + "\":{";
+    size_t i = j.find(pat, s);
+    if (i == kNpos || i + pat.size() > e) return {kNpos, kNpos};
+    size_t inner = i + pat.size();
+    int depth = 1;
+    size_t k = inner;
+    while (k < e && depth > 0) {
+      char c = j[k];
+      if (c == '{') depth++;
+      else if (c == '}') depth--;
+      else if (c == '"') { ++k; while (k < e && j[k] != '"') { if (j[k] == '\\') ++k; ++k; } }
+      if (depth > 0) ++k;
+    }
+    return {inner, k};
+  }
+
+  // Iterate each "KEY":{...} entry within j[s..e), calling cb(key, inner_s, inner_e).
+  void JIterObjs(const std::string &j, size_t s, size_t e,
+      std::function<void(const std::string &, size_t, size_t)> cb) {
+    size_t i = s;
+    while (i < e) {
+      size_t qs = j.find('"', i);
+      if (qs == kNpos || qs >= e) break;
+      size_t ke = j.find('"', qs + 1);
+      if (ke == kNpos || ke >= e) break;
+      std::string key = j.substr(qs + 1, ke - qs - 1);
+      i = ke + 1;
+      size_t colon = j.find(':', i);
+      if (colon == kNpos || colon >= e) break;
+      i = colon + 1;
+      if (i < e && j[i] == '{') {
+        size_t inner = i + 1;
+        int depth = 1;
+        size_t k = inner;
+        while (k < e && depth > 0) {
+          char c = j[k];
+          if (c == '{') depth++;
+          else if (c == '}') depth--;
+          else if (c == '"') { ++k; while (k < e && j[k] != '"') { if (j[k] == '\\') ++k; ++k; } }
+          if (depth > 0) ++k;
+        }
+        cb(key, inner, k);
+        i = k + 1;
+      } else {
+        while (i < e && j[i] != ',' && j[i] != '}') {
+          if (j[i] == '"') { ++i; while (i < e && j[i] != '"') { if (j[i] == '\\') ++i; ++i; } ++i; }
+          else ++i;
+        }
+      }
+      if (i < e && j[i] == ',') ++i;
+    }
+  }
+} // anonymous namespace
 
 namespace passkeys_windows
 {
@@ -413,6 +487,74 @@ namespace passkeys_windows
           allow_list.ppCredentials = allow_ptrs.data();
         }
 
+        // Parse PRF extension if provided
+        bool has_prf = false;
+        std::vector<uint8_t> prf_global_first, prf_global_second;
+        WEBAUTHN_HMAC_SECRET_SALT prf_global_salt = {};
+        WEBAUTHN_HMAC_SECRET_SALT_VALUES prf_salt_values = {};
+
+        struct PerCredPrf { std::vector<uint8_t> credId, first, second; };
+        std::vector<PerCredPrf> per_cred_prf;
+        std::vector<WEBAUTHN_HMAC_SECRET_SALT> prf_cred_salts;
+        std::vector<WEBAUTHN_CRED_WITH_HMAC_SECRET_SALT> prf_cred_list;
+
+        if (extensions && !extensions->empty()) {
+          const std::string &ext = *extensions;
+          size_t ext_len = ext.size();
+          auto [prf_s, prf_e] = JObj(ext, 0, ext_len, "prf");
+          if (prf_s != kNpos) {
+            // Global eval salts
+            auto [ev_s, ev_e] = JObj(ext, prf_s, prf_e, "eval");
+            if (ev_s != kNpos) {
+              std::string fb = JStr(ext, ev_s, ev_e, "first");
+              if (!fb.empty()) {
+                prf_global_first = DecodeBase64Url(fb);
+                std::string sb = JStr(ext, ev_s, ev_e, "second");
+                if (!sb.empty()) prf_global_second = DecodeBase64Url(sb);
+                prf_global_salt.cbFirst  = static_cast<DWORD>(prf_global_first.size());
+                prf_global_salt.pbFirst  = prf_global_first.data();
+                prf_global_salt.cbSecond = static_cast<DWORD>(prf_global_second.size());
+                prf_global_salt.pbSecond = prf_global_second.empty() ? nullptr : prf_global_second.data();
+                prf_salt_values.pGlobalHmacSalt = &prf_global_salt;
+                has_prf = true;
+              }
+            }
+            // Per-credential eval salts
+            auto [ebc_s, ebc_e] = JObj(ext, prf_s, prf_e, "evalByCredential");
+            if (ebc_s != kNpos) {
+              JIterObjs(ext, ebc_s, ebc_e, [&](const std::string &credId, size_t vs, size_t ve) {
+                std::string fb = JStr(ext, vs, ve, "first");
+                if (fb.empty()) return;
+                PerCredPrf p;
+                p.credId = DecodeBase64Url(credId);
+                p.first  = DecodeBase64Url(fb);
+                std::string sb = JStr(ext, vs, ve, "second");
+                if (!sb.empty()) p.second = DecodeBase64Url(sb);
+                per_cred_prf.push_back(std::move(p));
+                has_prf = true;
+              });
+              prf_cred_salts.resize(per_cred_prf.size());
+              prf_cred_list.resize(per_cred_prf.size());
+              for (size_t ci = 0; ci < per_cred_prf.size(); ci++) {
+                auto &pc = per_cred_prf[ci];
+                auto &salt = prf_cred_salts[ci];
+                salt.cbFirst  = static_cast<DWORD>(pc.first.size());
+                salt.pbFirst  = pc.first.data();
+                salt.cbSecond = static_cast<DWORD>(pc.second.size());
+                salt.pbSecond = pc.second.empty() ? nullptr : pc.second.data();
+                auto &entry = prf_cred_list[ci];
+                entry.cbCredID = static_cast<DWORD>(pc.credId.size());
+                entry.pbCredID = pc.credId.data();
+                entry.pHmacSecretSalt = &salt;
+              }
+              if (!prf_cred_list.empty()) {
+                prf_salt_values.cCredWithHmacSecretSaltList = static_cast<DWORD>(prf_cred_list.size());
+                prf_salt_values.pCredWithHmacSecretSaltList = prf_cred_list.data();
+              }
+            }
+          }
+        }
+
         // Setup options
         std::wstring rp_id_wide = Utf8ToWide(relying_party_id);
 
@@ -423,6 +565,8 @@ namespace passkeys_windows
         options.dwUserVerificationRequirement = WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED;
         options.pCancellationId = &cancellation_id_;
         options.pAllowCredentialList = allow_creds.empty() ? nullptr : &allow_list;
+        // PRF salts (VERSION_6 field): Windows will hash these per the WebAuthn PRF spec
+        options.pHmacSecretSaltValues = has_prf ? &prf_salt_values : nullptr;
 
         if (user_verification)
         {
@@ -484,6 +628,20 @@ namespace passkeys_windows
 
         AuthenticateResponse response(
             id, id, client_data_json_b64, authenticator_data, signature, user_handle);
+
+        // Extract PRF/hmac-secret output if available (requires WEBAUTHN_ASSERTION_VERSION_3+)
+        if (assertion->dwVersion >= WEBAUTHN_ASSERTION_VERSION_3 &&
+            assertion->pHmacSecret && assertion->pHmacSecret->cbFirst > 0) {
+          auto *h = assertion->pHmacSecret;
+          std::string prf_json =
+              "{\"prf\":{\"results\":{\"first\":\"" +
+              EncodeBase64Url(h->pbFirst, h->cbFirst) + "\"";
+          if (h->cbSecond > 0 && h->pbSecond) {
+            prf_json += ",\"second\":\"" + EncodeBase64Url(h->pbSecond, h->cbSecond) + "\"";
+          }
+          prf_json += "}}}"; 
+          response.set_client_extension_results(prf_json);
+        }
 
         // Memory freed automatically by unique_ptr deleter
 
