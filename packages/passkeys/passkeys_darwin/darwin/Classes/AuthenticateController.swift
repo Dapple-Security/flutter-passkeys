@@ -67,26 +67,6 @@ class AuthenticateController: NSObject, ASAuthorizationControllerDelegate, ASAut
         case let r as ASAuthorizationPlatformPublicKeyCredentialAssertion:
             var extensionResults: [String: Any] = [:]
             
-            // Extract largeBlob assertion result if available
-            if #available(iOS 17.0, macOS 14.0, *) {
-                if extensions?["largeBlob"] != nil {
-                    if let largeBlobOutput = r.largeBlob {
-                        switch largeBlobOutput.result {
-                        case .read(let data):
-                            if let data = data {
-                                extensionResults["largeBlob"] = ["blob": data.toBase64URL()]
-                            }
-                        case .write(let success):
-                            if success {
-                                extensionResults["largeBlob"] = ["written": true]
-                            }
-                        @unknown default:
-                            break
-                        }
-                    }
-                }
-            }
-            
             // Extract PRF assertion result if available
             if #available(iOS 18.0, macOS 15.0, *) {
                 if extensions?["prf"] != nil {
