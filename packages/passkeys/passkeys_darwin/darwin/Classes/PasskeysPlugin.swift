@@ -147,21 +147,6 @@ public class PasskeysPlugin: NSObject, FlutterPlugin, PasskeysApi {
             extensionsDict = parsed
         }
         
-        // Apply largeBlob extension to platform requests if available
-        if #available(iOS 17.0, macOS 14.0, *) {
-            if let largeBlobExt = extensionsDict?["largeBlob"] as? [String: Any] {
-                for request in requests {
-                    if let platformRequest = request as? ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest {
-                        if largeBlobExt["support"] as? String == "required" {
-                            platformRequest.largeBlob = ASAuthorizationPublicKeyCredentialLargeBlobRegistrationInput.supportRequired
-                        } else if largeBlobExt["support"] as? String == "preferred" {
-                            platformRequest.largeBlob = ASAuthorizationPublicKeyCredentialLargeBlobRegistrationInput.supportPreferred
-                        }
-                    }
-                }
-            }
-        }
-        
         // Apply PRF extension to platform registration requests if available
         if #available(iOS 18.0, macOS 15.0, *) {
             if let prfExt = extensionsDict?["prf"] as? [String: Any] {
@@ -232,22 +217,6 @@ public class PasskeysPlugin: NSObject, FlutterPlugin, PasskeysApi {
            let data = extensionsJson.data(using: .utf8),
            let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             extensionsDict = parsed
-        }
-        
-        // Apply largeBlob extension to platform assertion requests if available
-        if #available(iOS 17.0, macOS 14.0, *) {
-            if let largeBlobExt = extensionsDict?["largeBlob"] as? [String: Any] {
-                for request in requests {
-                    if let platformRequest = request as? ASAuthorizationPlatformPublicKeyCredentialAssertionRequest {
-                        if let readData = largeBlobExt["read"] as? Bool, readData {
-                            platformRequest.largeBlob = ASAuthorizationPublicKeyCredentialLargeBlobAssertionInput.read
-                        } else if let writeData = largeBlobExt["write"] as? String,
-                                  let writeBytes = Data.fromBase64Url(writeData) {
-                            platformRequest.largeBlob = ASAuthorizationPublicKeyCredentialLargeBlobAssertionInput.write(writeBytes)
-                        }
-                    }
-                }
-            }
         }
         
         // Apply PRF extension to platform assertion requests if available

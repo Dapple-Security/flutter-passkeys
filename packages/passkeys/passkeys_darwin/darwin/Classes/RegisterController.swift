@@ -39,17 +39,7 @@ class RegisterController: NSObject, ASAuthorizationControllerDelegate, ASAuthori
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         switch authorization.credential {
         case let credentialRegistration as ASAuthorizationPlatformPublicKeyCredentialRegistration:
-            var extensionResults: [String: Any] = [:]
-            
-            // Extract largeBlob registration result if available
-            if #available(iOS 17.0, macOS 14.0, *) {
-                if extensions?["largeBlob"] != nil {
-                    let largeBlobResult = credentialRegistration.largeBlob
-                    if let supported = largeBlobResult?.isSupported {
-                        extensionResults["largeBlob"] = ["supported": supported]
-                    }
-                }
-            }
+            var extensionResults: [String: Any] = [:]        
             
             // Extract PRF registration result if available
             if #available(iOS 18.0, macOS 15.0, *) {
