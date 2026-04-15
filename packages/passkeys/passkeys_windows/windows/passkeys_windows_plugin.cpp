@@ -483,6 +483,7 @@ namespace passkeys_windows
             }
           } catch (const nlohmann::json::exception &) {
             // Malformed extensions JSON — proceed without PRF
+            has_prf = false;
           }
         }
 
