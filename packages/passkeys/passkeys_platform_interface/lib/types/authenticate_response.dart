@@ -8,7 +8,8 @@ class AuthenticateResponseType {
       required this.clientDataJSON,
       required this.authenticatorData,
       required this.signature,
-      required this.userHandle});
+      required this.userHandle,
+      this.clientExtensionResults});
 
   /// Constructs a new instance from a JSON string.
   factory AuthenticateResponseType.fromJsonString(String jsonString) {
@@ -37,6 +38,8 @@ class AuthenticateResponseType {
         authenticatorData: response['authenticatorData'] as String? ?? '',
         signature: response['signature'] as String? ?? '',
         userHandle: (response['userHandle'] as String?) ?? '',
+        clientExtensionResults:
+            json['clientExtensionResults'] as Map<String, dynamic>?,
       );
     }
 
@@ -48,6 +51,8 @@ class AuthenticateResponseType {
       authenticatorData: json['authenticatorData'] as String? ?? '',
       signature: json['signature'] as String? ?? '',
       userHandle: (json['userHandle'] as String?) ?? '',
+      clientExtensionResults:
+          json['clientExtensionResults'] as Map<String, dynamic>?,
     );
   }
 
@@ -68,6 +73,11 @@ class AuthenticateResponseType {
 
   /// The user handle. Can be empty if the user handle is not available.
   final String userHandle;
+
+  /// The client extension results returned by the authenticator.
+  /// Contains the results of any WebAuthn extensions that were requested
+  /// during authentication (e.g. appid, prf).
+  final Map<String, dynamic>? clientExtensionResults;
 
   /// Converts this instance to a JSON string.
   String toJsonString() => jsonEncode(toJson());
@@ -92,7 +102,7 @@ class AuthenticateResponseType {
       'rawId': rawId,
       'type': 'public-key',
       'response': response,
-      'clientExtensionResults': <String, dynamic>{},
+      'clientExtensionResults': clientExtensionResults ?? <String, dynamic>{},
     };
   }
 }

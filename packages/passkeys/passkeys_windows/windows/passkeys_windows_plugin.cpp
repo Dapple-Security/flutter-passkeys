@@ -7,7 +7,9 @@
 #include <webauthn.h>
 
 #include <flutter/plugin_registrar_windows.h>
+#include <nlohmann/json.hpp>
 
+#include <functional>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -52,6 +54,7 @@ namespace passkeys_windows
       result(version >= WEBAUTHN_API_VERSION_1);
     }
 
+    // TODO: currently Register() accepts an extensions parameter for compatibility with the API, but doesn't actually do anything with it.
     void Register(
         const std::string &challenge,
         const RelyingParty &relying_party,
@@ -61,6 +64,7 @@ namespace passkeys_windows
         const int64_t *timeout,
         const std::string *attestation,
         const flutter::EncodableList &exclude_credentials,
+        const std::string *extensions,
         std::function<void(ErrorOr<RegisterResponse> reply)> result) override
     {
 
@@ -342,6 +346,7 @@ namespace passkeys_windows
         const std::string *user_verification,
         const flutter::EncodableList *allow_credentials,
         const bool *prefer_immediately_available_credentials,
+        const std::string *extensions,
         std::function<void(ErrorOr<AuthenticateResponse> reply)> result) override
     {
 
@@ -411,6 +416,77 @@ namespace passkeys_windows
           allow_list.ppCredentials = allow_ptrs.data();
         }
 
+        // Parse PRF extension if provided
+        bool has_prf = false;
+        std::vector<uint8_t> prf_global_first, prf_global_second;
+        WEBAUTHN_HMAC_SECRET_SALT prf_global_salt = {};
+        WEBAUTHN_HMAC_SECRET_SALT_VALUES prf_salt_values = {};
+
+        struct PerCredPrf { std::vector<uint8_t> credId, first, second; };
+        std::vector<PerCredPrf> per_cred_prf;
+        std::vector<WEBAUTHN_HMAC_SECRET_SALT> prf_cred_salts;
+        std::vector<WEBAUTHN_CRED_WITH_HMAC_SECRET_SALT> prf_cred_list;
+
+        if (extensions && !extensions->empty()) {
+          try {
+            auto ext_json = nlohmann::json::parse(*extensions);
+            if (ext_json.contains("prf")) {
+              const auto &prf_node = ext_json.at("prf");
+              // Global salts
+              if (prf_node.contains("eval")) {
+                const auto &eval = prf_node.at("eval");
+                if (eval.contains("first")) {
+                  prf_global_first = DecodeBase64Url(eval.at("first").get<std::string>());
+                  if (eval.contains("second")) {
+                    prf_global_second = DecodeBase64Url(eval.at("second").get<std::string>());
+                  }
+                  prf_global_salt.cbFirst  = static_cast<DWORD>(prf_global_first.size());
+                  prf_global_salt.pbFirst  = prf_global_first.data();
+                  prf_global_salt.cbSecond = static_cast<DWORD>(prf_global_second.size());
+                  prf_global_salt.pbSecond = prf_global_second.empty() ? nullptr : prf_global_second.data();
+                  prf_salt_values.pGlobalHmacSalt = &prf_global_salt;
+                  has_prf = true;
+                }
+              }
+              // Per-credential salts
+              if (prf_node.contains("evalByCredential")) {
+                for (const auto &[cred_id_str, cred_eval] : prf_node.at("evalByCredential").items()) {
+                  if (!cred_eval.contains("first")) continue;
+                  PerCredPrf p;
+                  p.credId = DecodeBase64Url(cred_id_str);
+                  p.first  = DecodeBase64Url(cred_eval.at("first").get<std::string>());
+                  if (cred_eval.contains("second")) {
+                    p.second = DecodeBase64Url(cred_eval.at("second").get<std::string>());
+                  }
+                  per_cred_prf.push_back(std::move(p));
+                  has_prf = true;
+                }
+                prf_cred_salts.resize(per_cred_prf.size());
+                prf_cred_list.resize(per_cred_prf.size());
+                for (size_t ci = 0; ci < per_cred_prf.size(); ci++) {
+                  auto &pc = per_cred_prf[ci];
+                  auto &salt = prf_cred_salts[ci];
+                  salt.cbFirst  = static_cast<DWORD>(pc.first.size());
+                  salt.pbFirst  = pc.first.data();
+                  salt.cbSecond = static_cast<DWORD>(pc.second.size());
+                  salt.pbSecond = pc.second.empty() ? nullptr : pc.second.data();
+                  auto &entry = prf_cred_list[ci];
+                  entry.cbCredID = static_cast<DWORD>(pc.credId.size());
+                  entry.pbCredID = pc.credId.data();
+                  entry.pHmacSecretSalt = &salt;
+                }
+                if (!prf_cred_list.empty()) {
+                  prf_salt_values.cCredWithHmacSecretSaltList = static_cast<DWORD>(prf_cred_list.size());
+                  prf_salt_values.pCredWithHmacSecretSaltList = prf_cred_list.data();
+                }
+              }
+            }
+          } catch (const nlohmann::json::exception &) {
+            // Malformed extensions JSON — proceed without PRF
+            has_prf = false;
+          }
+        }
+
         // Setup options
         std::wstring rp_id_wide = Utf8ToWide(relying_party_id);
 
@@ -421,6 +497,7 @@ namespace passkeys_windows
         options.dwUserVerificationRequirement = WEBAUTHN_USER_VERIFICATION_REQUIREMENT_PREFERRED;
         options.pCancellationId = &cancellation_id_;
         options.pAllowCredentialList = allow_creds.empty() ? nullptr : &allow_list;
+        options.pHmacSecretSaltValues = has_prf ? &prf_salt_values : nullptr;
 
         if (user_verification)
         {
@@ -482,6 +559,18 @@ namespace passkeys_windows
 
         AuthenticateResponse response(
             id, id, client_data_json_b64, authenticator_data, signature, user_handle);
+
+        // Extract PRF/hmac-secret output if available (requires WebAuthN 3+)
+        if (assertion->dwVersion >= WEBAUTHN_ASSERTION_VERSION_3 &&
+            assertion->pHmacSecret && assertion->pHmacSecret->cbFirst > 0) {
+          auto *h = assertion->pHmacSecret;
+          nlohmann::json results = {{"first", EncodeBase64Url(h->pbFirst, h->cbFirst)}};
+          if (h->cbSecond > 0 && h->pbSecond) {
+            results["second"] = EncodeBase64Url(h->pbSecond, h->cbSecond);
+          }
+          nlohmann::json prf_output = {{"prf", {{"results", results}}}};
+          response.set_client_extension_results(prf_output.dump());
+        }
 
         // Memory freed automatically by unique_ptr deleter
 

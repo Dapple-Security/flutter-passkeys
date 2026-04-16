@@ -18,6 +18,7 @@ class PasskeyLoginRequest {
     String? platformUserVerification,
     List<CredentialType>? platformAllowCredentials,
     MediationType platformMediation,
+    Map<String, dynamic>? extensions,
   ) {
     final allowCredentials = platformAllowCredentials?.map((e) {
           return PasskeyLoginAllowCredentialType(
@@ -37,6 +38,7 @@ class PasskeyLoginRequest {
               platformUserVerification)
           : null,
       allowCredentials: allowCredentials,
+      extensions: extensions,
     );
 
     final mediation =
@@ -58,7 +60,7 @@ class PasskeyLoginPublicKey {
       this.rpId,
       this.allowCredentials,
       this.userVerification,
-      this.loginExtensions});
+      this.extensions});
 
   factory PasskeyLoginPublicKey.fromJson(Map<String, dynamic> json) =>
       _$PasskeyLoginPublicKeyFromJson(json);
@@ -68,7 +70,7 @@ class PasskeyLoginPublicKey {
   final String? rpId;
   final List<PasskeyLoginAllowCredentialType>? allowCredentials;
   final UserVerificationRequirement? userVerification;
-  final LoginExtensions? loginExtensions;
+  final Map<String, dynamic>? extensions;
 
   Map<String, dynamic> toJson() => _$PasskeyLoginPublicKeyToJson(this);
 }
@@ -162,18 +164,4 @@ enum UserVerificationRequirement {
         throw ArgumentError.value(value);
     }
   }
-}
-
-@JsonSerializable(explicitToJson: true)
-class LoginExtensions {
-  LoginExtensions(this.appid, this.appidExclude, this.credProps);
-
-  factory LoginExtensions.fromJson(Map<String, dynamic> json) =>
-      _$LoginExtensionsFromJson(json);
-
-  final String? appid;
-  final String? appidExclude;
-  final String? credProps;
-
-  Map<String, dynamic> toJson() => _$LoginExtensionsToJson(this);
 }

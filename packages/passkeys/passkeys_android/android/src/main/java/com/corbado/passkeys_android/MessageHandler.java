@@ -89,6 +89,7 @@ public class MessageHandler implements Messages.PasskeysApi {
             @Nullable Long timeout,
             @Nullable String attestation,
             @NonNull List<Messages.ExcludeCredential> excludeCredentials,
+            @Nullable String extensions,
             @NonNull Messages.Result<Messages.RegisterResponse> result) {
         if (android.os.Build.VERSION.SDK_INT < 28) {
             result.error(new Messages.FlutterError("android-passkey-unsupported",
@@ -120,7 +121,8 @@ public class MessageHandler implements Messages.PasskeysApi {
                 timeout,
                 authSelectionType,
                 attestation,
-                excludeCredentialsType);
+                excludeCredentialsType,
+                extensions);
 
         try {
             String options = createCredentialOptions.toJSON().toString();
@@ -164,6 +166,10 @@ public class MessageHandler implements Messages.PasskeysApi {
                                         .setClientDataJSON(response.getString("clientDataJSON"))
                                         .setAttestationObject(response.getString("attestationObject"))
                                         .setTransports(typedTransports)
+                                        .setClientExtensionResults(
+                                                json.has("clientExtensionResults")
+                                                        ? json.getJSONObject("clientExtensionResults").toString()
+                                                        : null)
                                         .build());
                             } catch (JSONException e) {
                                 Log.e(TAG, "Error parsing response: " + resp, e);
@@ -224,6 +230,7 @@ public class MessageHandler implements Messages.PasskeysApi {
     public void authenticate(@NonNull String relyingPartyId, @NonNull String challenge, @Nullable Long timeout,
             @Nullable String userVerification, @Nullable List<Messages.AllowCredential> allowCredentials,
             @Nullable Boolean preferImmediatelyAvailableCredentials,
+            @Nullable String extensions,
             @NonNull Messages.Result<Messages.AuthenticateResponse> result) {
         if (android.os.Build.VERSION.SDK_INT < 28) {
             result.error(new Messages.FlutterError("android-passkey-unsupported",
@@ -238,7 +245,7 @@ public class MessageHandler implements Messages.PasskeysApi {
                     .collect(Collectors.toList());
         }
         GetCredentialOptions getCredentialOptions = new GetCredentialOptions(challenge, timeout, relyingPartyId,
-                allowCredentialsType, userVerification);
+                allowCredentialsType, userVerification, extensions);
         try {
             String options = getCredentialOptions.toJSON().toString();
 
@@ -283,7 +290,12 @@ public class MessageHandler implements Messages.PasskeysApi {
                                     final Messages.AuthenticateResponse msg = new Messages.AuthenticateResponse.Builder()
                                             .setId(id).setRawId(rawId).setClientDataJSON(clientDataJSON)
                                             .setAuthenticatorData(authenticatorData).setSignature(signature)
-                                            .setUserHandle(userHandle).build();
+                                            .setUserHandle(userHandle)
+                                            .setClientExtensionResults(
+                                                    json.has("clientExtensionResults")
+                                                            ? json.getJSONObject("clientExtensionResults").toString()
+                                                            : null)
+                                            .build();
 
                                     result.success(msg);
                                 } catch (JSONException e) {

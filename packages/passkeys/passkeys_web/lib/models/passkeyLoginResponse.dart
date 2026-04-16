@@ -8,11 +8,13 @@ class PasskeyLoginResponse {
   factory PasskeyLoginResponse.fromJson(Map<String, dynamic> json) =>
       _$PasskeyLoginResponseFromJson(json);
 
-  PasskeyLoginResponse(this.id, this.rawId, this.response);
+  PasskeyLoginResponse(
+      this.id, this.rawId, this.response, this.clientExtensionResults);
 
   final String id;
   final String rawId;
   final AssertionResponse response;
+  final Map<String, dynamic>? clientExtensionResults;
 
   Map<String, dynamic> toJson() => _$PasskeyLoginResponseToJson(this);
 
@@ -24,6 +26,7 @@ class PasskeyLoginResponse {
         userHandle: response.userHandle ?? '',
         id: id,
         rawId: rawId,
+        clientExtensionResults: clientExtensionResults,
       );
 }
 

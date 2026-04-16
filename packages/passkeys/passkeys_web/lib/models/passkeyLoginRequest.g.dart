@@ -38,10 +38,7 @@ PasskeyLoginPublicKey _$PasskeyLoginPublicKeyFromJson(
           .toList(),
       userVerification: $enumDecodeNullable(
           _$UserVerificationRequirementEnumMap, json['userVerification']),
-      loginExtensions: json['loginExtensions'] == null
-          ? null
-          : LoginExtensions.fromJson(
-              json['loginExtensions'] as Map<String, dynamic>),
+      extensions: json['extensions'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$PasskeyLoginPublicKeyToJson(
@@ -54,7 +51,7 @@ Map<String, dynamic> _$PasskeyLoginPublicKeyToJson(
           instance.allowCredentials?.map((e) => e.toJson()).toList(),
       'userVerification':
           _$UserVerificationRequirementEnumMap[instance.userVerification],
-      'loginExtensions': instance.loginExtensions?.toJson(),
+      'extensions': instance.extensions,
     };
 
 const _$UserVerificationRequirementEnumMap = {
@@ -90,17 +87,3 @@ const _$AuthenticatorTransportEnumMap = {
   AuthenticatorTransport.Usb: 'usb',
   AuthenticatorTransport.Bluetooth: 'bluetooth',
 };
-
-LoginExtensions _$LoginExtensionsFromJson(Map<String, dynamic> json) =>
-    LoginExtensions(
-      json['appid'] as String?,
-      json['appidExclude'] as String?,
-      json['credProps'] as String?,
-    );
-
-Map<String, dynamic> _$LoginExtensionsToJson(LoginExtensions instance) =>
-    <String, dynamic>{
-      'appid': instance.appid,
-      'appidExclude': instance.appidExclude,
-      'credProps': instance.credProps,
-    };

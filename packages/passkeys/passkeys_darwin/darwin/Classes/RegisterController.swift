@@ -14,9 +14,11 @@ import FlutterMacOS
 class RegisterController: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, Cancellable {
     private var completion: ((Result<RegisterResponse, Error>) -> Void)?
     private var cancelAuthorization: (() -> Void)?;
+    private var extensions: [String: Any]?
 
-    init(completion: @escaping ((Result<RegisterResponse, Error>) -> Void)) {
+    init(completion: @escaping ((Result<RegisterResponse, Error>) -> Void), extensions: [String: Any]? = nil) {
         self.completion = completion;
+        self.extensions = extensions;
     }
     
     func run(requests: [ASAuthorizationRequest]) {
@@ -37,12 +39,41 @@ class RegisterController: NSObject, ASAuthorizationControllerDelegate, ASAuthori
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         switch authorization.credential {
         case let credentialRegistration as ASAuthorizationPlatformPublicKeyCredentialRegistration:
+            var extensionResults: [String: Any] = [:]        
+            
+            // Extract PRF registration result if available
+            if #available(iOS 18.0, macOS 15.0, *) {
+                if extensions?["prf"] != nil {
+                    if let prfResult = credentialRegistration.prf {
+                        var prfDict: [String: Any] = ["enabled": prfResult.isSupported]
+                        if let first = prfResult.first {
+                            var results: [String: Any] = ["first": first.toBase64URL()]
+                            if let second = prfResult.second {
+                                results["second"] = second.toBase64URL()
+                            }
+                            prfDict["results"] = results
+                        }
+                        extensionResults["prf"] = prfDict
+                    }
+                }
+            }
+            
+            let clientExtensionResultsJson: String?
+            if !extensionResults.isEmpty,
+               let jsonData = try? JSONSerialization.data(withJSONObject: extensionResults),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                clientExtensionResultsJson = jsonString
+            } else {
+                clientExtensionResultsJson = nil
+            }
+            
             let response = RegisterResponse(
                 id: credentialRegistration.credentialID.toBase64URL(),
                 rawId: credentialRegistration.credentialID.toBase64URL(),
                 clientDataJSON: credentialRegistration.rawClientDataJSON.toBase64URL(),
                 attestationObject: credentialRegistration.rawAttestationObject!.toBase64URL(),
-                transports: []
+                transports: [],
+                clientExtensionResults: clientExtensionResultsJson
             )
             completion?(.success(response))
             break

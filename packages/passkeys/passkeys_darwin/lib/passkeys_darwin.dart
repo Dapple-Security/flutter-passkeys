@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:passkeys_darwin/messages.g.dart';
 import 'package:passkeys_platform_interface/passkeys_platform_interface.dart';
@@ -44,6 +46,7 @@ class PasskeysDarwin extends PasskeysPlatform {
           request.authSelectionType!.authenticatorAttachment != 'platform',
       request.authSelectionType?.residentKey,
       request.attestation,
+      request.extensions != null ? jsonEncode(request.extensions) : null,
     );
 
     return RegisterResponseType(
@@ -52,6 +55,9 @@ class PasskeysDarwin extends PasskeysPlatform {
       clientDataJSON: r.clientDataJSON,
       attestationObject: r.attestationObject,
       transports: r.transports.whereType<String>().toList(),
+      clientExtensionResults: r.clientExtensionResults != null
+          ? jsonDecode(r.clientExtensionResults!) as Map<String, dynamic>?
+          : null,
     );
   }
 
@@ -74,6 +80,7 @@ class PasskeysDarwin extends PasskeysPlatform {
               .toList() ??
           [],
       request.preferImmediatelyAvailableCredentials,
+      request.extensions != null ? jsonEncode(request.extensions) : null,
     );
 
     return AuthenticateResponseType(
@@ -83,6 +90,9 @@ class PasskeysDarwin extends PasskeysPlatform {
       authenticatorData: r.authenticatorData,
       signature: r.signature,
       userHandle: r.userHandle ?? '',
+      clientExtensionResults: r.clientExtensionResults != null
+          ? jsonDecode(r.clientExtensionResults!) as Map<String, dynamic>?
+          : null,
     );
   }
 

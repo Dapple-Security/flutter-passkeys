@@ -25,6 +25,7 @@ class PublicKey {
     this.excludeCredentials,
     this.timeout,
     this.attestation,
+    this.extensions,
   );
 
   final RelyingPartyType rp;
@@ -35,6 +36,7 @@ class PublicKey {
   final List<CredentialType> excludeCredentials;
   final int? timeout;
   final String? attestation;
+  final Map<String, dynamic>? extensions;
 
   Map<String, dynamic> toJson() => _$PublicKeyToJson(this);
 }

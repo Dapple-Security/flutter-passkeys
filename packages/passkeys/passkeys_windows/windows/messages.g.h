@@ -285,13 +285,22 @@ class AuthenticatorSelection {
 // Generated class from Pigeon that represents data sent in messages.
 class RegisterResponse {
  public:
-  // Constructs an object setting all fields.
+  // Constructs an object setting all non-nullable fields.
   explicit RegisterResponse(
     const std::string& id,
     const std::string& raw_id,
     const std::string& client_data_j_s_o_n,
     const std::string& attestation_object,
     const flutter::EncodableList& transports);
+
+  // Constructs an object setting all fields.
+  explicit RegisterResponse(
+    const std::string& id,
+    const std::string& raw_id,
+    const std::string& client_data_j_s_o_n,
+    const std::string& attestation_object,
+    const flutter::EncodableList& transports,
+    const std::string* client_extension_results);
 
   // The ID
   const std::string& id() const;
@@ -313,6 +322,11 @@ class RegisterResponse {
   const flutter::EncodableList& transports() const;
   void set_transports(const flutter::EncodableList& value_arg);
 
+  // JSON-encoded client extension results
+  const std::string* client_extension_results() const;
+  void set_client_extension_results(const std::string_view* value_arg);
+  void set_client_extension_results(std::string_view value_arg);
+
 
  private:
   static RegisterResponse FromEncodableList(const flutter::EncodableList& list);
@@ -324,6 +338,7 @@ class RegisterResponse {
   std::string client_data_j_s_o_n_;
   std::string attestation_object_;
   flutter::EncodableList transports_;
+  std::optional<std::string> client_extension_results_;
 
 };
 
@@ -333,7 +348,7 @@ class RegisterResponse {
 // Generated class from Pigeon that represents data sent in messages.
 class AuthenticateResponse {
  public:
-  // Constructs an object setting all fields.
+  // Constructs an object setting all non-nullable fields.
   explicit AuthenticateResponse(
     const std::string& id,
     const std::string& raw_id,
@@ -341,6 +356,16 @@ class AuthenticateResponse {
     const std::string& authenticator_data,
     const std::string& signature,
     const std::string& user_handle);
+
+  // Constructs an object setting all fields.
+  explicit AuthenticateResponse(
+    const std::string& id,
+    const std::string& raw_id,
+    const std::string& client_data_j_s_o_n,
+    const std::string& authenticator_data,
+    const std::string& signature,
+    const std::string& user_handle,
+    const std::string* client_extension_results);
 
   // The ID
   const std::string& id() const;
@@ -366,6 +391,11 @@ class AuthenticateResponse {
   const std::string& user_handle() const;
   void set_user_handle(std::string_view value_arg);
 
+  // JSON-encoded client extension results
+  const std::string* client_extension_results() const;
+  void set_client_extension_results(const std::string_view* value_arg);
+  void set_client_extension_results(std::string_view value_arg);
+
 
  private:
   static AuthenticateResponse FromEncodableList(const flutter::EncodableList& list);
@@ -378,6 +408,7 @@ class AuthenticateResponse {
   std::string authenticator_data_;
   std::string signature_;
   std::string user_handle_;
+  std::optional<std::string> client_extension_results_;
 
 };
 
@@ -417,6 +448,7 @@ class PasskeysApi {
     const int64_t* timeout,
     const std::string* attestation,
     const flutter::EncodableList& exclude_credentials,
+    const std::string* extensions,
     std::function<void(ErrorOr<RegisterResponse> reply)> result) = 0;
   virtual void Authenticate(
     const std::string& relying_party_id,
@@ -425,6 +457,7 @@ class PasskeysApi {
     const std::string* user_verification,
     const flutter::EncodableList* allow_credentials,
     const bool* prefer_immediately_available_credentials,
+    const std::string* extensions,
     std::function<void(ErrorOr<AuthenticateResponse> reply)> result) = 0;
   virtual void CancelCurrentAuthenticatorOperation(std::function<void(std::optional<FlutterError> reply)> result) = 0;
 

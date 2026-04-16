@@ -53,6 +53,7 @@ public class PasskeysPlugin: NSObject, FlutterPlugin, PasskeysApi {
         canBeSecurityKey: Bool = true,
         residentKeyPreference: String?,
         attestationPreference: String?,
+        extensions: String?,
         completion: @escaping (Result<RegisterResponse, Error>) -> Void
     ) {
         guard (try? canAuthenticate()) == true else {
@@ -138,12 +139,39 @@ public class PasskeysPlugin: NSObject, FlutterPlugin, PasskeysApi {
             requests.append(externalRequest)
         }
         
+        // Parse extensions JSON
+        var extensionsDict: [String: Any]?
+        if let extensionsJson = extensions,
+           let data = extensionsJson.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            extensionsDict = parsed
+        }
+        
+        // Apply PRF extension to platform registration requests if available
+        if #available(iOS 18.0, macOS 15.0, *) {
+            if let prfExt = extensionsDict?["prf"] as? [String: Any] {
+                for request in requests {
+                    if let platformRequest = request as? ASAuthorizationPlatformPublicKeyCredentialRegistrationRequest {
+                        if let eval = prfExt["eval"] as? [String: Any],
+                           let firstB64 = eval["first"] as? String,
+                           let firstData = Data.fromBase64Url(firstB64) {
+                            let secondData = (eval["second"] as? String).flatMap { Data.fromBase64Url($0) }
+                            let saltValues = ASAuthorizationPublicKeyCredentialPRFAssertionInput.InputValues.saltInput1(firstData, saltInput2: secondData)
+                            platformRequest.prf = .inputValues(saltValues)
+                        } else {
+                            platformRequest.prf = .checkForSupport
+                        }
+                    }
+                }
+            }
+        }
+        
         func wrappedCompletion(result: Result<RegisterResponse, Error>) {
             lock.unlock()
             completion(result)
         }
         
-        let con = RegisterController(completion: wrappedCompletion)
+        let con = RegisterController(completion: wrappedCompletion, extensions: extensionsDict)
         con.run(requests: requests)
         inFlightController = con
     }
@@ -154,6 +182,7 @@ public class PasskeysPlugin: NSObject, FlutterPlugin, PasskeysApi {
         conditionalUI: Bool,
         allowedCredentials: [CredentialType],
         preferImmediatelyAvailableCredentials: Bool,
+        extensions: String?,
         completion: @escaping (Result<AuthenticateResponse, Error>) -> Void
     ) {
         guard (try? canAuthenticate()) == true else {
@@ -182,7 +211,49 @@ public class PasskeysPlugin: NSObject, FlutterPlugin, PasskeysApi {
             requests.append(externalRequest)
         }
         
-        let con = AuthenticateController(completion: completion)
+        // Parse extensions JSON
+        var extensionsDict: [String: Any]?
+        if let extensionsJson = extensions,
+           let data = extensionsJson.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            extensionsDict = parsed
+        }
+        
+        // Apply PRF extension to platform assertion requests if available
+        if #available(iOS 18.0, macOS 15.0, *) {
+            if let prfExt = extensionsDict?["prf"] as? [String: Any],
+               let eval = prfExt["eval"] as? [String: Any],
+               let firstB64 = eval["first"] as? String,
+               let firstData = Data.fromBase64Url(firstB64) {
+                let secondData = (eval["second"] as? String).flatMap { Data.fromBase64Url($0) }
+                let inputValues = ASAuthorizationPublicKeyCredentialPRFAssertionInput.InputValues.saltInput1(firstData, saltInput2: secondData)
+
+                var perCredentialValues: [Data: ASAuthorizationPublicKeyCredentialPRFAssertionInput.InputValues]?
+                if let evalByCredential = prfExt["evalByCredential"] as? [String: [String: Any]] {
+                    perCredentialValues = [:]
+                    for (credId, salts) in evalByCredential {
+                        if let credIdData = Data.fromBase64Url(credId),
+                           let saltFirstB64 = salts["first"] as? String,
+                           let saltFirstData = Data.fromBase64Url(saltFirstB64) {
+                            let saltSecondData = (salts["second"] as? String).flatMap { Data.fromBase64Url($0) }
+                            perCredentialValues?[credIdData] = ASAuthorizationPublicKeyCredentialPRFAssertionInput.InputValues.saltInput1(saltFirstData, saltInput2: saltSecondData)
+                        }
+                    }
+                }
+
+                let prfInput = ASAuthorizationPublicKeyCredentialPRFAssertionInput.inputValues(
+                    inputValues, perCredentialInputValues: perCredentialValues
+                )
+
+                for request in requests {
+                    if let platformRequest = request as? ASAuthorizationPlatformPublicKeyCredentialAssertionRequest {
+                        platformRequest.prf = prfInput
+                    }
+                }
+            }
+        }
+        
+        let con = AuthenticateController(completion: completion, extensions: extensionsDict)
         con.run(requests: requests, conditionalUI: conditionalUI, preferImmediatelyAvailableCredentials: preferImmediatelyAvailableCredentials)
         inFlightController = con
     }
@@ -306,5 +377,13 @@ extension Data {
         result = result.replacingOccurrences(of: "/", with: "_")
         result = result.replacingOccurrences(of: "=", with: "")
         return result
+    }
+}
+
+import CryptoKit
+
+extension SymmetricKey {
+    func toBase64URL() -> String {
+        return withUnsafeBytes { Data(Array($0)).toBase64URL() }
     }
 }

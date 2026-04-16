@@ -7,11 +7,13 @@ class PasskeySignUpResponse {
   factory PasskeySignUpResponse.fromJson(Map<String, dynamic> json) =>
       _$PasskeySignUpResponseFromJson(json);
 
-  PasskeySignUpResponse(this.id, this.rawId, this.response);
+  PasskeySignUpResponse(
+      this.id, this.rawId, this.response, this.clientExtensionResults);
 
   final String id;
   final String rawId;
   final AttestationResponse response;
+  final Map<String, dynamic>? clientExtensionResults;
 
   Map<String, dynamic> toJson() => _$PasskeySignUpResponseToJson(this);
 }
@@ -22,10 +24,10 @@ class AttestationResponse {
       _$AttestationResponseFromJson(json);
 
   AttestationResponse(
-      this.clientDataJSON,
-      this.attestationObject,
-      this.transports,
-      );
+    this.clientDataJSON,
+    this.attestationObject,
+    this.transports,
+  );
 
   final String clientDataJSON;
   final String attestationObject;
