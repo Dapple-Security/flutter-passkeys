@@ -25,7 +25,8 @@ namespace {
     if (GetTempPathA(MAX_PATH, temp_path)) {
       //std::string log_path = std::string(temp_path) + "passkeys_windows_debug.log";
       std::string log_path = std::string("c:\\temp\\") + "passkeys_windows_debug.log";
-      FILE* f = fopen(log_path.c_str(), "a");
+      FILE* f = nullptr;
+      fopen_s(&f, log_path.c_str(), "a");
       if (f) {
         fprintf(f, "%s", prefixed.c_str());
         fclose(f);
@@ -552,6 +553,8 @@ namespace passkeys_windows
             has_prf = false;
           }
         }
+
+        std::wstring rp_id_wide = Utf8ToWide(relying_party_id);
 
         WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS options = {};
         options.dwVersion = WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION;
