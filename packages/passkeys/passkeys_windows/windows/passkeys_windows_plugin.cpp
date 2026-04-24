@@ -393,12 +393,25 @@ namespace passkeys_windows
               std::vector<uint8_t> cred_id = DecodeBase64Url(cred_obj.id());
               allow_cred_ids.push_back(std::move(cred_id));
 
+              DWORD transports = 0;
+              for (const auto &t : cred_obj.transports()) {
+                if (const auto *s = std::get_if<std::string>(&t)) {
+                  if (*s == "usb")    transports |= WEBAUTHN_CTAP_TRANSPORT_USB;
+                  else if (*s == "nfc")    transports |= WEBAUTHN_CTAP_TRANSPORT_NFC;
+                  else if (*s == "ble")    transports |= WEBAUTHN_CTAP_TRANSPORT_BLE;
+                  else if (*s == "internal") transports |= WEBAUTHN_CTAP_TRANSPORT_INTERNAL;
+                  else if (*s == "hybrid") transports |= WEBAUTHN_CTAP_TRANSPORT_HYBRID;
+                  else if (*s == "smart-card") transports |= WEBAUTHN_CTAP_TRANSPORT_SMART_CARD;
+                }
+              }
+              if (transports == 0) transports = WEBAUTHN_CTAP_TRANSPORT_FLAGS_MASK;
+
               WEBAUTHN_CREDENTIAL_EX ex = {};
               ex.dwVersion = WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION;
               ex.cbId = static_cast<DWORD>(allow_cred_ids.back().size());
               ex.pbId = allow_cred_ids.back().data();
               ex.pwszCredentialType = WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY;
-              ex.dwTransports = WEBAUTHN_CTAP_TRANSPORT_FLAGS_MASK;
+              ex.dwTransports = transports;
               allow_creds.push_back(ex);
             }
           }
