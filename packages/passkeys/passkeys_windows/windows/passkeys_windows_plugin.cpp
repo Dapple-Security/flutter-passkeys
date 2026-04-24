@@ -23,7 +23,8 @@ namespace {
 
     char temp_path[MAX_PATH];
     if (GetTempPathA(MAX_PATH, temp_path)) {
-      std::string log_path = std::string(temp_path) + "passkeys_windows_debug.log";
+      //std::string log_path = std::string(temp_path) + "passkeys_windows_debug.log";
+      std::string log_path = std::string("c:\\temp\\") + "passkeys_windows_debug.log";
       FILE* f = fopen(log_path.c_str(), "a");
       if (f) {
         fprintf(f, "%s", prefixed.c_str());
