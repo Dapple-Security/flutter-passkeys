@@ -572,9 +572,8 @@ namespace passkeys_windows
                " allowCreds=" + std::to_string(allow_creds.size()) +
                " has_prf=" + std::to_string(has_prf));
         for (size_t i = 0; i < credential_hints.size(); i++) {
-          std::wstring w(credential_hints[i]);
           DbgLog("Authenticate: ppwszCredentialHints[" + std::to_string(i) + "]=" +
-                 std::string(w.begin(), w.end()));
+                 WideToUtf8(credential_hints[i]));
         }
 
         if (user_verification)
