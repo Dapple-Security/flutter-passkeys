@@ -429,7 +429,7 @@ namespace passkeys_windows
           allow_list.ppCredentials = allow_ptrs.data();
         }
 
-        // Parse PRF extension if provided
+        // Parse PRF extension and credential hints if provided
         bool has_prf = false;
         std::vector<uint8_t> prf_global_first, prf_global_second;
         WEBAUTHN_HMAC_SECRET_SALT prf_global_salt = {};
@@ -439,6 +439,11 @@ namespace passkeys_windows
         std::vector<PerCredPrf> per_cred_prf;
         std::vector<WEBAUTHN_HMAC_SECRET_SALT> prf_cred_salts;
         std::vector<WEBAUTHN_CRED_WITH_HMAC_SECRET_SALT> prf_cred_list;
+
+        // Owned wide strings for credential hints; pointers into this vector
+        // are passed to the Windows API so lifetimes must outlive the call.
+        std::vector<std::wstring> hint_strings_wide;
+        std::vector<LPCWSTR> credential_hints;
 
         if (extensions && !extensions->empty()) {
           try {
@@ -494,25 +499,28 @@ namespace passkeys_windows
                 }
               }
             }
+            // Optional hints array (https://w3c.github.io/webauthn/#enum-hints).
+            // Maps "hybrid" -> WEBAUTHN_CREDENTIAL_HINT_HYBRID, etc.
+            if (ext_json.contains("hints") && ext_json.at("hints").is_array()) {
+              for (const auto &h : ext_json.at("hints")) {
+                if (!h.is_string()) continue;
+                const std::string &s = h.get<std::string>();
+                if (s == "hybrid") {
+                  hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
+                } else if (s == "security-key") {
+                  hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
+                } else if (s == "client-device") {
+                  hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
+                }
+              }
+              for (const auto &w : hint_strings_wide) {
+                credential_hints.push_back(w.c_str());
+              }
+            }
           } catch (const nlohmann::json::exception &) {
-            // Malformed extensions JSON — proceed without PRF
+            // Malformed extensions JSON — proceed without PRF or hints
             has_prf = false;
           }
-        }
-
-        // Setup options
-        std::wstring rp_id_wide = Utf8ToWide(relying_party_id);
-
-        // Build credential hints from the union of transport flags across all
-        // allowed credentials. If every credential specifies only hybrid transport,
-        // hint the UI to show only the cross-device option.
-        DWORD all_transports = 0;
-        for (const auto &ex : allow_creds) {
-          all_transports |= ex.dwTransports;
-        }
-        std::vector<LPCWSTR> credential_hints;
-        if (!allow_creds.empty() && all_transports == WEBAUTHN_CTAP_TRANSPORT_HYBRID) {
-          credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
         }
 
         WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS options = {};
