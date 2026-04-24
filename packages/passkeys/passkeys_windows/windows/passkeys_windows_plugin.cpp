@@ -14,11 +14,14 @@
 #include <sstream>
 #include <stdexcept>
 
-// Debug logging helper — output visible in VS Output window or Sysinternals DebugView
+// Debug logging helper — writes to stderr (visible in flutter run terminal)
+// and OutputDebugString (visible in Sysinternals DebugView when run as Admin).
 namespace {
   void DbgLog(const std::string& msg) {
     std::string prefixed = "[passkeys_windows] " + msg + "\n";
     OutputDebugStringA(prefixed.c_str());
+    fprintf(stderr, "%s", prefixed.c_str());
+    fflush(stderr);
   }
 }
 
