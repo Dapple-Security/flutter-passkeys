@@ -14,6 +14,14 @@
 #include <sstream>
 #include <stdexcept>
 
+// Debug logging helper — output visible in VS Output window or Sysinternals DebugView
+namespace {
+  void DbgLog(const std::string& msg) {
+    std::string prefixed = "[passkeys_windows] " + msg + "\n";
+    OutputDebugStringA(prefixed.c_str());
+  }
+}
+
 namespace passkeys_windows
 {
 
@@ -445,6 +453,8 @@ namespace passkeys_windows
         std::vector<std::wstring> hint_strings_wide;
         std::vector<LPCWSTR> credential_hints;
 
+        DbgLog("Authenticate: extensions=" + (extensions ? *extensions : "<null>"));
+
         if (extensions && !extensions->empty()) {
           try {
             auto ext_json = nlohmann::json::parse(*extensions);
@@ -502,22 +512,30 @@ namespace passkeys_windows
             // Optional hints array (https://w3c.github.io/webauthn/#enum-hints).
             // Maps "hybrid" -> WEBAUTHN_CREDENTIAL_HINT_HYBRID, etc.
             if (ext_json.contains("hints") && ext_json.at("hints").is_array()) {
+              DbgLog("Authenticate: hints key found in extensions, count=" +
+                     std::to_string(ext_json.at("hints").size()));
               for (const auto &h : ext_json.at("hints")) {
                 if (!h.is_string()) continue;
                 const std::string &s = h.get<std::string>();
+                DbgLog("Authenticate: parsing hint=\"" + s + "\"");
                 if (s == "hybrid") {
                   hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
                 } else if (s == "security-key") {
                   hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
                 } else if (s == "client-device") {
                   hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
+                } else {
+                  DbgLog("Authenticate: unrecognised hint=\"" + s + "\", ignored");
                 }
               }
               for (const auto &w : hint_strings_wide) {
                 credential_hints.push_back(w.c_str());
               }
+            } else {
+              DbgLog("Authenticate: no hints key in extensions");
             }
-          } catch (const nlohmann::json::exception &) {
+          } catch (const nlohmann::json::exception &e) {
+            DbgLog(std::string("Authenticate: extensions JSON parse error: ") + e.what());
             // Malformed extensions JSON — proceed without PRF or hints
             has_prf = false;
           }
@@ -533,6 +551,16 @@ namespace passkeys_windows
         options.pHmacSecretSaltValues = has_prf ? &prf_salt_values : nullptr;
         options.cCredentialHints = static_cast<DWORD>(credential_hints.size());
         options.ppwszCredentialHints = credential_hints.empty() ? nullptr : credential_hints.data();
+
+        DbgLog("Authenticate: options.dwVersion=" + std::to_string(options.dwVersion) +
+               " cCredentialHints=" + std::to_string(options.cCredentialHints) +
+               " allowCreds=" + std::to_string(allow_creds.size()) +
+               " has_prf=" + std::to_string(has_prf));
+        for (size_t i = 0; i < credential_hints.size(); i++) {
+          std::wstring w(credential_hints[i]);
+          DbgLog("Authenticate: ppwszCredentialHints[" + std::to_string(i) + "]=" +
+                 std::string(w.begin(), w.end()));
+        }
 
         if (user_verification)
         {
