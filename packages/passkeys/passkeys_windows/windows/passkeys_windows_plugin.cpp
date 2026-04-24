@@ -503,6 +503,18 @@ namespace passkeys_windows
         // Setup options
         std::wstring rp_id_wide = Utf8ToWide(relying_party_id);
 
+        // Build credential hints from the union of transport flags across all
+        // allowed credentials. If every credential specifies only hybrid transport,
+        // hint the UI to show only the cross-device option.
+        DWORD all_transports = 0;
+        for (const auto &ex : allow_creds) {
+          all_transports |= ex.dwTransports;
+        }
+        std::vector<LPCWSTR> credential_hints;
+        if (!allow_creds.empty() && all_transports == WEBAUTHN_CTAP_TRANSPORT_HYBRID) {
+          credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
+        }
+
         WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS options = {};
         options.dwVersion = WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_CURRENT_VERSION;
         options.dwTimeoutMilliseconds = timeout ? static_cast<DWORD>(*timeout) : 60000;
@@ -511,6 +523,8 @@ namespace passkeys_windows
         options.pCancellationId = &cancellation_id_;
         options.pAllowCredentialList = allow_creds.empty() ? nullptr : &allow_list;
         options.pHmacSecretSaltValues = has_prf ? &prf_salt_values : nullptr;
+        options.cCredentialHints = static_cast<DWORD>(credential_hints.size());
+        options.ppwszCredentialHints = credential_hints.empty() ? nullptr : credential_hints.data();
 
         if (user_verification)
         {
