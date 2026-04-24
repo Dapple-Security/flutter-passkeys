@@ -360,21 +360,21 @@ class _PasskeysApiCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 128:
+      case 128: 
         return AllowCredential.decode(readValue(buffer)!);
-      case 129:
+      case 129: 
         return AuthenticateResponse.decode(readValue(buffer)!);
-      case 130:
+      case 130: 
         return AuthenticatorSelection.decode(readValue(buffer)!);
-      case 131:
+      case 131: 
         return ExcludeCredential.decode(readValue(buffer)!);
-      case 132:
+      case 132: 
         return PubKeyCredParam.decode(readValue(buffer)!);
-      case 133:
+      case 133: 
         return RegisterResponse.decode(readValue(buffer)!);
-      case 134:
+      case 134: 
         return RelyingParty.decode(readValue(buffer)!);
-      case 135:
+      case 135: 
         return User.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -394,10 +394,10 @@ class PasskeysApi {
 
   Future<bool> canAuthenticate() async {
     final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.passkeys_windows.PasskeysApi.canAuthenticate',
-        codec,
+        'dev.flutter.pigeon.passkeys_windows.PasskeysApi.canAuthenticate', codec,
         binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
+    final List<Object?>? replyList =
+        await channel.send(null) as List<Object?>?;
     if (replyList == null) {
       throw PlatformException(
         code: 'channel-error',
@@ -421,10 +421,10 @@ class PasskeysApi {
 
   Future<bool> hasPasskeySupport() async {
     final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.passkeys_windows.PasskeysApi.hasPasskeySupport',
-        codec,
+        'dev.flutter.pigeon.passkeys_windows.PasskeysApi.hasPasskeySupport', codec,
         binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
+    final List<Object?>? replyList =
+        await channel.send(null) as List<Object?>?;
     if (replyList == null) {
       throw PlatformException(
         code: 'channel-error',
@@ -446,30 +446,12 @@ class PasskeysApi {
     }
   }
 
-  Future<RegisterResponse> register(
-      String arg_challenge,
-      RelyingParty arg_relyingParty,
-      User arg_user,
-      AuthenticatorSelection? arg_authenticatorSelection,
-      List<PubKeyCredParam?>? arg_pubKeyCredParams,
-      int? arg_timeout,
-      String? arg_attestation,
-      List<ExcludeCredential?> arg_excludeCredentials,
-      String? arg_extensions) async {
+  Future<RegisterResponse> register(String arg_challenge, RelyingParty arg_relyingParty, User arg_user, AuthenticatorSelection? arg_authenticatorSelection, List<PubKeyCredParam?>? arg_pubKeyCredParams, int? arg_timeout, String? arg_attestation, List<ExcludeCredential?> arg_excludeCredentials, String? arg_extensions) async {
     final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.passkeys_windows.PasskeysApi.register', codec,
         binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(<Object?>[
-      arg_challenge,
-      arg_relyingParty,
-      arg_user,
-      arg_authenticatorSelection,
-      arg_pubKeyCredParams,
-      arg_timeout,
-      arg_attestation,
-      arg_excludeCredentials,
-      arg_extensions
-    ]) as List<Object?>?;
+    final List<Object?>? replyList =
+        await channel.send(<Object?>[arg_challenge, arg_relyingParty, arg_user, arg_authenticatorSelection, arg_pubKeyCredParams, arg_timeout, arg_attestation, arg_excludeCredentials, arg_extensions]) as List<Object?>?;
     if (replyList == null) {
       throw PlatformException(
         code: 'channel-error',
@@ -491,26 +473,12 @@ class PasskeysApi {
     }
   }
 
-  Future<AuthenticateResponse> authenticate(
-      String arg_relyingPartyId,
-      String arg_challenge,
-      int? arg_timeout,
-      String? arg_userVerification,
-      List<AllowCredential?>? arg_allowCredentials,
-      bool? arg_preferImmediatelyAvailableCredentials,
-      String? arg_extensions) async {
+  Future<AuthenticateResponse> authenticate(String arg_relyingPartyId, String arg_challenge, int? arg_timeout, String? arg_userVerification, List<AllowCredential?>? arg_allowCredentials, bool? arg_preferImmediatelyAvailableCredentials, String? arg_extensions, List<String?>? arg_hints) async {
     final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.passkeys_windows.PasskeysApi.authenticate', codec,
         binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(<Object?>[
-      arg_relyingPartyId,
-      arg_challenge,
-      arg_timeout,
-      arg_userVerification,
-      arg_allowCredentials,
-      arg_preferImmediatelyAvailableCredentials,
-      arg_extensions
-    ]) as List<Object?>?;
+    final List<Object?>? replyList =
+        await channel.send(<Object?>[arg_relyingPartyId, arg_challenge, arg_timeout, arg_userVerification, arg_allowCredentials, arg_preferImmediatelyAvailableCredentials, arg_extensions, arg_hints]) as List<Object?>?;
     if (replyList == null) {
       throw PlatformException(
         code: 'channel-error',
@@ -534,10 +502,10 @@ class PasskeysApi {
 
   Future<void> cancelCurrentAuthenticatorOperation() async {
     final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(
-        'dev.flutter.pigeon.passkeys_windows.PasskeysApi.cancelCurrentAuthenticatorOperation',
-        codec,
+        'dev.flutter.pigeon.passkeys_windows.PasskeysApi.cancelCurrentAuthenticatorOperation', codec,
         binaryMessenger: _binaryMessenger);
-    final List<Object?>? replyList = await channel.send(null) as List<Object?>?;
+    final List<Object?>? replyList =
+        await channel.send(null) as List<Object?>?;
     if (replyList == null) {
       throw PlatformException(
         code: 'channel-error',

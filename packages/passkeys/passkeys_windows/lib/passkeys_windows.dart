@@ -37,6 +37,7 @@ class PasskeysWindows extends PasskeysPlatform {
           .toList(),
       request.preferImmediatelyAvailableCredentials,
       request.extensions != null ? jsonEncode(request.extensions) : null,
+      request.hints,
     );
 
     return AuthenticateResponseType(

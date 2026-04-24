@@ -368,6 +368,7 @@ namespace passkeys_windows
         const flutter::EncodableList *allow_credentials,
         const bool *prefer_immediately_available_credentials,
         const std::string *extensions,
+        const flutter::EncodableList *hints,
         std::function<void(ErrorOr<AuthenticateResponse> reply)> result) override
     {
 
@@ -450,7 +451,7 @@ namespace passkeys_windows
           allow_list.ppCredentials = allow_ptrs.data();
         }
 
-        // Parse PRF extension and credential hints if provided
+        // Parse PRF extension if provided
         bool has_prf = false;
         std::vector<uint8_t> prf_global_first, prf_global_second;
         WEBAUTHN_HMAC_SECRET_SALT prf_global_salt = {};
@@ -460,11 +461,6 @@ namespace passkeys_windows
         std::vector<PerCredPrf> per_cred_prf;
         std::vector<WEBAUTHN_HMAC_SECRET_SALT> prf_cred_salts;
         std::vector<WEBAUTHN_CRED_WITH_HMAC_SECRET_SALT> prf_cred_list;
-
-        // Owned wide strings for credential hints; pointers into this vector
-        // are passed to the Windows API so lifetimes must outlive the call.
-        std::vector<std::wstring> hint_strings_wide;
-        std::vector<LPCWSTR> credential_hints;
 
         DbgLog("Authenticate: extensions=" + (extensions ? *extensions : "<null>"));
 
@@ -522,35 +518,36 @@ namespace passkeys_windows
                 }
               }
             }
-            // Optional hints array (https://w3c.github.io/webauthn/#enum-hints).
-            // Maps "hybrid" -> WEBAUTHN_CREDENTIAL_HINT_HYBRID, etc.
-            if (ext_json.contains("hints") && ext_json.at("hints").is_array()) {
-              DbgLog("Authenticate: hints key found in extensions, count=" +
-                     std::to_string(ext_json.at("hints").size()));
-              for (const auto &h : ext_json.at("hints")) {
-                if (!h.is_string()) continue;
-                const std::string &s = h.get<std::string>();
-                DbgLog("Authenticate: parsing hint=\"" + s + "\"");
-                if (s == "hybrid") {
-                  hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
-                } else if (s == "security-key") {
-                  hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
-                } else if (s == "client-device") {
-                  hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
-                } else {
-                  DbgLog("Authenticate: unrecognised hint=\"" + s + "\", ignored");
-                }
-              }
-              for (const auto &w : hint_strings_wide) {
-                credential_hints.push_back(w.c_str());
-              }
-            } else {
-              DbgLog("Authenticate: no hints key in extensions");
-            }
           } catch (const nlohmann::json::exception &e) {
             DbgLog(std::string("Authenticate: extensions JSON parse error: ") + e.what());
-            // Malformed extensions JSON — proceed without PRF or hints
+            // Malformed extensions JSON — proceed without PRF
             has_prf = false;
+          }
+        }
+
+        // Build credential hints from the hints parameter
+        // (https://w3c.github.io/webauthn/#enum-hints).
+        // Owned wide strings must outlive the API call.
+        std::vector<std::wstring> hint_strings_wide;
+        std::vector<LPCWSTR> credential_hints;
+        DbgLog("Authenticate: hints count=" + std::to_string(hints ? hints->size() : 0));
+        if (hints) {
+          for (const auto &item : *hints) {
+            if (const auto *s = std::get_if<std::string>(&item)) {
+              DbgLog("Authenticate: hint=\"" + *s + "\"");
+              if (*s == "hybrid") {
+                hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
+              } else if (*s == "security-key") {
+                hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
+              } else if (*s == "client-device") {
+                hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
+              } else {
+                DbgLog("Authenticate: unrecognised hint=\"" + *s + "\", ignored");
+              }
+            }
+          }
+          for (const auto &w : hint_strings_wide) {
+            credential_hints.push_back(w.c_str());
           }
         }
 

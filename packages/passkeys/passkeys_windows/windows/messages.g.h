@@ -458,6 +458,7 @@ class PasskeysApi {
     const flutter::EncodableList* allow_credentials,
     const bool* prefer_immediately_available_credentials,
     const std::string* extensions,
+    const flutter::EncodableList* hints,
     std::function<void(ErrorOr<AuthenticateResponse> reply)> result) = 0;
   virtual void CancelCurrentAuthenticatorOperation(std::function<void(std::optional<FlutterError> reply)> result) = 0;
 

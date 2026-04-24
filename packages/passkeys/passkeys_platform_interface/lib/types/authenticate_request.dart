@@ -16,6 +16,7 @@ class AuthenticateRequestType {
     this.userVerification,
     this.allowCredentials,
     this.extensions,
+    this.hints,
   });
 
   /// Constructs a new instance from a JSON string.
@@ -103,6 +104,11 @@ class AuthenticateRequestType {
   /// extensions (e.g. prf). The keys are extension identifiers and values
   /// are the extension inputs as defined by the WebAuthn spec.
   final Map<String, dynamic>? extensions;
+
+  /// Optional credential hints (https://w3c.github.io/webauthn/#enum-hints).
+  /// Guides the platform UI toward a specific authenticator type.
+  /// Common values: 'hybrid', 'security-key', 'client-device'.
+  final List<String>? hints;
 
   /// Converts this instance to a JSON string.
   String toJsonString() => jsonEncode(toJson());

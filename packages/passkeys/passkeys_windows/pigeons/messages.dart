@@ -196,6 +196,7 @@ abstract class PasskeysApi {
     List<AllowCredential>? allowCredentials,
     bool? preferImmediatelyAvailableCredentials,
     String? extensions,
+    List<String?>? hints,
   );
 
   @async
