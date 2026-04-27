@@ -14,27 +14,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// Debug logging helper — appends to %TEMP%\passkeys_windows_debug.log and
-// also writes to OutputDebugString (Sysinternals DebugView when run as Admin).
-namespace {
-  void DbgLog(const std::string& msg) {
-    std::string prefixed = "[passkeys_windows] " + msg + "\n";
-    OutputDebugStringA(prefixed.c_str());
-
-    char temp_path[MAX_PATH];
-    if (GetTempPathA(MAX_PATH, temp_path)) {
-      //std::string log_path = std::string(temp_path) + "passkeys_windows_debug.log";
-      std::string log_path = std::string("c:\\temp\\") + "passkeys_windows_debug.log";
-      FILE* f = nullptr;
-      fopen_s(&f, log_path.c_str(), "a");
-      if (f) {
-        fprintf(f, "%s", prefixed.c_str());
-        fclose(f);
-      }
-    }
-  }
-}
-
 namespace passkeys_windows
 {
 
@@ -462,8 +441,6 @@ namespace passkeys_windows
         std::vector<WEBAUTHN_HMAC_SECRET_SALT> prf_cred_salts;
         std::vector<WEBAUTHN_CRED_WITH_HMAC_SECRET_SALT> prf_cred_list;
 
-        DbgLog("Authenticate: extensions=" + (extensions ? *extensions : "<null>"));
-
         if (extensions && !extensions->empty()) {
           try {
             auto ext_json = nlohmann::json::parse(*extensions);
@@ -518,8 +495,7 @@ namespace passkeys_windows
                 }
               }
             }
-          } catch (const nlohmann::json::exception &e) {
-            DbgLog(std::string("Authenticate: extensions JSON parse error: ") + e.what());
+          } catch (const nlohmann::json::exception &) {
             // Malformed extensions JSON — proceed without PRF
             has_prf = false;
           }
@@ -530,19 +506,15 @@ namespace passkeys_windows
         // Owned wide strings must outlive the API call.
         std::vector<std::wstring> hint_strings_wide;
         std::vector<LPCWSTR> credential_hints;
-        DbgLog("Authenticate: hints count=" + std::to_string(hints ? hints->size() : 0));
         if (hints) {
           for (const auto &item : *hints) {
             if (const auto *s = std::get_if<std::string>(&item)) {
-              DbgLog("Authenticate: hint=\"" + *s + "\"");
               if (*s == "hybrid") {
                 hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
               } else if (*s == "security-key") {
                 hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
               } else if (*s == "client-device") {
                 hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
-              } else {
-                DbgLog("Authenticate: unrecognised hint=\"" + *s + "\", ignored");
               }
             }
           }
@@ -563,15 +535,6 @@ namespace passkeys_windows
         options.pHmacSecretSaltValues = has_prf ? &prf_salt_values : nullptr;
         options.cCredentialHints = static_cast<DWORD>(credential_hints.size());
         options.ppwszCredentialHints = credential_hints.empty() ? nullptr : credential_hints.data();
-
-        DbgLog("Authenticate: options.dwVersion=" + std::to_string(options.dwVersion) +
-               " cCredentialHints=" + std::to_string(options.cCredentialHints) +
-               " allowCreds=" + std::to_string(allow_creds.size()) +
-               " has_prf=" + std::to_string(has_prf));
-        for (size_t i = 0; i < credential_hints.size(); i++) {
-          DbgLog("Authenticate: ppwszCredentialHints[" + std::to_string(i) + "]=" +
-                 WideToUtf8(credential_hints[i]));
-        }
 
         if (user_verification)
         {
