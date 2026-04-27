@@ -502,8 +502,7 @@ namespace passkeys_windows
         }
 
         // Build credential hints from the hints parameter
-        // (https://w3c.github.io/webauthn/#enum-hints).
-        // Owned wide strings must outlive the API call.
+        // (https://w3c.github.io/webauthn/#enum-hints).        
         std::vector<std::wstring> hint_strings_wide;
         std::vector<LPCWSTR> credential_hints;
         if (hints) {

@@ -107,7 +107,7 @@ class AuthenticateRequestType {
 
   /// Optional credential hints (https://w3c.github.io/webauthn/#enum-hints).
   /// Guides the platform UI toward a specific authenticator type.
-  /// Common values: 'hybrid', 'security-key', 'client-device'.
+  /// Defined values in WebAuthn 3 draft: 'hybrid', 'security-key', 'client-device'.
   final List<String>? hints;
 
   /// Converts this instance to a JSON string.
