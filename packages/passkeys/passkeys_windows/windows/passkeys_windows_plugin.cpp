@@ -503,22 +503,18 @@ namespace passkeys_windows
 
         // Build credential hints from the hints parameter
         // (https://w3c.github.io/webauthn/#enum-hints).        
-        std::vector<std::wstring> hint_strings_wide;
         std::vector<LPCWSTR> credential_hints;
         if (hints) {
           for (const auto &item : *hints) {
             if (const auto *s = std::get_if<std::string>(&item)) {
               if (*s == "hybrid") {
-                hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
+                credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
               } else if (*s == "security-key") {
-                hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
+                credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
               } else if (*s == "client-device") {
-                hint_strings_wide.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
+                credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
               }
             }
-          }
-          for (const auto &w : hint_strings_wide) {
-            credential_hints.push_back(w.c_str());
           }
         }
 
