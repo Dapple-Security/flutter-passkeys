@@ -347,6 +347,7 @@ namespace passkeys_windows
         const flutter::EncodableList *allow_credentials,
         const bool *prefer_immediately_available_credentials,
         const std::string *extensions,
+        const flutter::EncodableList *hints,
         std::function<void(ErrorOr<AuthenticateResponse> reply)> result) override
     {
 
@@ -393,12 +394,25 @@ namespace passkeys_windows
               std::vector<uint8_t> cred_id = DecodeBase64Url(cred_obj.id());
               allow_cred_ids.push_back(std::move(cred_id));
 
+              DWORD transports = 0;
+              for (const auto &t : cred_obj.transports()) {
+                if (const auto *s = std::get_if<std::string>(&t)) {
+                  if (*s == "usb")    transports |= WEBAUTHN_CTAP_TRANSPORT_USB;
+                  else if (*s == "nfc")    transports |= WEBAUTHN_CTAP_TRANSPORT_NFC;
+                  else if (*s == "ble")    transports |= WEBAUTHN_CTAP_TRANSPORT_BLE;
+                  else if (*s == "internal") transports |= WEBAUTHN_CTAP_TRANSPORT_INTERNAL;
+                  else if (*s == "hybrid") transports |= WEBAUTHN_CTAP_TRANSPORT_HYBRID;
+                  else if (*s == "smart-card") transports |= WEBAUTHN_CTAP_TRANSPORT_SMART_CARD;
+                }
+              }
+              if (transports == 0) transports = WEBAUTHN_CTAP_TRANSPORT_FLAGS_MASK;
+
               WEBAUTHN_CREDENTIAL_EX ex = {};
               ex.dwVersion = WEBAUTHN_CREDENTIAL_EX_CURRENT_VERSION;
               ex.cbId = static_cast<DWORD>(allow_cred_ids.back().size());
               ex.pbId = allow_cred_ids.back().data();
               ex.pwszCredentialType = WEBAUTHN_CREDENTIAL_TYPE_PUBLIC_KEY;
-              ex.dwTransports = WEBAUTHN_CTAP_TRANSPORT_FLAGS_MASK;
+              ex.dwTransports = transports;
               allow_creds.push_back(ex);
             }
           }
@@ -487,7 +501,23 @@ namespace passkeys_windows
           }
         }
 
-        // Setup options
+        // Build credential hints from the hints parameter
+        // (https://w3c.github.io/webauthn/#enum-hints).        
+        std::vector<LPCWSTR> credential_hints;
+        if (hints) {
+          for (const auto &item : *hints) {
+            if (const auto *s = std::get_if<std::string>(&item)) {
+              if (*s == "hybrid") {
+                credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_HYBRID);
+              } else if (*s == "security-key") {
+                credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_SECURITY_KEY);
+              } else if (*s == "client-device") {
+                credential_hints.push_back(WEBAUTHN_CREDENTIAL_HINT_CLIENT_DEVICE);
+              }
+            }
+          }
+        }
+
         std::wstring rp_id_wide = Utf8ToWide(relying_party_id);
 
         WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS options = {};
@@ -498,6 +528,8 @@ namespace passkeys_windows
         options.pCancellationId = &cancellation_id_;
         options.pAllowCredentialList = allow_creds.empty() ? nullptr : &allow_list;
         options.pHmacSecretSaltValues = has_prf ? &prf_salt_values : nullptr;
+        options.cCredentialHints = static_cast<DWORD>(credential_hints.size());
+        options.ppwszCredentialHints = credential_hints.empty() ? nullptr : credential_hints.data();
 
         if (user_verification)
         {

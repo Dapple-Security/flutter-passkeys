@@ -817,7 +817,9 @@ void PasskeysApi::SetUp(
           const auto* prefer_immediately_available_credentials_arg = std::get_if<bool>(&encodable_prefer_immediately_available_credentials_arg);
           const auto& encodable_extensions_arg = args.at(6);
           const auto* extensions_arg = std::get_if<std::string>(&encodable_extensions_arg);
-          api->Authenticate(relying_party_id_arg, challenge_arg, timeout_arg, user_verification_arg, allow_credentials_arg, prefer_immediately_available_credentials_arg, extensions_arg, [reply](ErrorOr<AuthenticateResponse>&& output) {
+          const auto& encodable_hints_arg = args.at(7);
+          const auto* hints_arg = std::get_if<EncodableList>(&encodable_hints_arg);
+          api->Authenticate(relying_party_id_arg, challenge_arg, timeout_arg, user_verification_arg, allow_credentials_arg, prefer_immediately_available_credentials_arg, extensions_arg, hints_arg, [reply](ErrorOr<AuthenticateResponse>&& output) {
             if (output.has_error()) {
               reply(WrapError(output.error()));
               return;
